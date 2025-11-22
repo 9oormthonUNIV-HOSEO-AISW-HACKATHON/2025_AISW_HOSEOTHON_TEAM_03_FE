@@ -469,8 +469,8 @@ function Main() {
             </div>
 
             {/* 오른쪽: 매칭 시작 버튼 영역 */}
-            <div className="flex-1 flex flex-col items-end justify-center min-h-0">
-              <div className="relative w-full max-w-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-[#05b04a]/10 rounded-3xl p-12 border-2 border-primary/20 shadow-2xl overflow-hidden h-full flex items-center justify-center">
+            <div className="w-full lg:flex-1 flex flex-col items-end justify-center min-h-0">
+              <div className="relative w-full lg:max-w-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-[#05b04a]/10 rounded-3xl p-12 border-2 border-primary/20 shadow-2xl overflow-hidden h-full flex items-center justify-center">
                 {/* 배경 장식 요소 */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#05b04a]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
