@@ -28,7 +28,6 @@ function Quiz() {
   const [timeLeft, setTimeLeft] = useState(10);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<AnswerResult | null>(null);
   const [gameFinished, setGameFinished] = useState(false);
   const [showCorrectAnswer, setShowCorrectAnswer] = useState(false); // 두 사람 모두 답변했을 때 정답 공개
@@ -89,7 +88,6 @@ function Quiz() {
     setTimeLeft(10);
     setHasAnswered(false);
     setSelectedAnswer(null);
-    setShowResult(false);
     pendingAnswerRef.current = null; // 새 문제 시작 시 대기 중인 답변 초기화
 
     if (timerRef.current) {
@@ -132,7 +130,6 @@ function Quiz() {
     setTimeLeft(10);
     setHasAnswered(false);
     setSelectedAnswer(null);
-    setShowResult(false);
     setShowCorrectAnswer(false); // 새 문제 로드 시 정답 공개 상태 리셋
     pendingAnswerRef.current = null; // 새 문제 로드 시 대기 중인 답변 초기화
     // 점수는 유지 (누적되므로 초기화하지 않음)
@@ -175,9 +172,8 @@ function Quiz() {
       `ANSWER_RESULT/ANSWER_DONE 수신: questionId=${questionId}, count=${count}, 현재 문제 인덱스: ${currentIndex}`
     );
 
-    // 결과 표시
+    // 결과 저장
     setLastResult(result);
-    setShowResult(true);
 
     // 점수 업데이트 (항상 최신 점수로 업데이트)
     if (result.score && typeof result.score === "object") {
@@ -333,12 +329,38 @@ function Quiz() {
             <p className="text-lg text-gray-600">
               문제 {currentQuestionIndex + 1} / {state.questions.length}
             </p>
-            <div
-              className={`text-2xl font-bold ${
-                timeLeft <= 3 ? "text-red-500" : "text-gray-700"
-              }`}
-            >
-              ⏱️ {timeLeft}초
+            <div className="flex items-center gap-6">
+              {/* 점수 현황 */}
+              {(Object.keys(currentScore).length > 0 || lastResult?.score) && (
+                <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-md">
+                  <span className="text-sm font-semibold text-gray-600">
+                    점수:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {(Object.keys(currentScore).length > 0
+                      ? Object.entries(currentScore)
+                      : lastResult?.score
+                      ? Object.entries(lastResult.score)
+                      : []
+                    ).map(([member, score], index, array) => (
+                      <span
+                        key={member}
+                        className="text-lg font-bold text-primary"
+                      >
+                        {member}: {score}점{index < array.length - 1 && " | "}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* 타이머 */}
+              <div
+                className={`text-2xl font-bold ${
+                  timeLeft <= 3 ? "text-red-500" : "text-gray-700"
+                }`}
+              >
+                ⏱️ {timeLeft}초
+              </div>
             </div>
           </div>
         </div>
@@ -415,46 +437,6 @@ function Quiz() {
             })}
           </div>
         </div>
-
-        {/* 결과 표시 */}
-        {showResult && lastResult && (
-          <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
-            <div className="text-center">
-              {/* 두 사람 모두 답변했을 때만 정답/오답 여부 표시 */}
-              {showCorrectAnswer && selectedAnswer !== null ? (
-                <p className="text-2xl font-bold mb-4">
-                  {currentQuestion.options[selectedAnswer]?.correct
-                    ? "✅ 정답입니다!"
-                    : "❌ 오답입니다"}
-                </p>
-              ) : (
-                <p className="text-2xl font-bold mb-4 text-gray-600">
-                  답변을 제출했습니다. 상대방의 답변을 기다리는 중...
-                </p>
-              )}
-              <div className="space-y-2">
-                <p className="text-lg font-bold">현재 점수</p>
-                {Object.keys(currentScore).length > 0 ? (
-                  Object.entries(currentScore).map(([member, score]) => (
-                    <div key={member} className="text-xl font-semibold">
-                      {member}:{" "}
-                      <span className="text-primary font-bold">{score}</span>점
-                    </div>
-                  ))
-                ) : lastResult?.score ? (
-                  Object.entries(lastResult.score).map(([member, score]) => (
-                    <div key={member} className="text-xl font-semibold">
-                      {member}:{" "}
-                      <span className="text-primary font-bold">{score}</span>점
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xl text-gray-500">점수 정보 없음</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
