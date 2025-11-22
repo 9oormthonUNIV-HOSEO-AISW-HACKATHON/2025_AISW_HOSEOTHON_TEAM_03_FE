@@ -1,9 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RANKING_DATA } from "../constants/ranking";
 import Header from "../components/Header";
 import { getWS, send } from "../utils/websocket";
 
+// 퀴즈 문제 타입 정의 (export하여 다른 파일에서도 사용 가능)
+export interface QuizOption {
+  content: string;
+  correct: boolean;
+}
+
+export interface QuizQuestion {
+  category: string;
+  content: string;
+  options: QuizOption[];
+}
+
 function Main() {
+  const navigate = useNavigate();
+  // 매칭 성공 시 받은 roomId 저장
+  const [roomId, setRoomId] = useState<string | null>(null);
+  // 매칭 팝업 표시 여부
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  // 수락 처리 중 상태
+  const [isAccepting, setIsAccepting] = useState(false);
+
   useEffect(() => {
     // 웹소켓 연결 (이미 연결되어 있으면 재사용)
     getWS();
@@ -15,8 +36,73 @@ function Main() {
         console.log("Main 페이지에서 메시지 수신:", event.data);
         try {
           const data = JSON.parse(event.data);
-          // 메시지 처리 로직
-          console.log("파싱된 데이터:", data);
+
+          // MATCH_FOUND 메시지 처리
+          if (data.type === "MATCH_FOUND") {
+            console.log("✅ 매칭 성공! MATCH_FOUND 수신");
+            console.log("roomId:", data.roomId);
+
+            // roomId 저장
+            if (data.roomId) {
+              setRoomId(data.roomId);
+              console.log("저장된 roomId:", data.roomId);
+            }
+
+            // 매칭 팝업 표시
+            setShowMatchModal(true);
+          }
+          // GAME_START 메시지 처리 (수락 후 게임 시작)
+          else if (data.type === "GAME_START") {
+            console.log("🎮 게임 시작! GAME_START 수신");
+            console.log("roomId:", data.roomId);
+            console.log("questions:", data.questions);
+
+            // 팝업 닫기
+            setShowMatchModal(false);
+            setIsAccepting(false);
+
+            // 퀴즈 데이터가 있으면 Quiz 페이지로 이동하면서 데이터 전달
+            if (data.questions && Array.isArray(data.questions)) {
+              const quizData: QuizQuestion[] = data.questions as QuizQuestion[];
+
+              console.log("받은 퀴즈 문제들:", quizData);
+              console.log("퀴즈 개수:", quizData.length);
+
+              // Quiz 페이지로 이동하면서 퀴즈 데이터와 roomId 전달
+              console.log("Quiz 페이지로 이동 시도...");
+              try {
+                navigate("/quiz", {
+                  state: {
+                    questions: quizData,
+                    roomId: data.roomId,
+                  },
+                  replace: false,
+                });
+                console.log("✅ Quiz 페이지로 이동 완료");
+              } catch (error) {
+                console.error("❌ Quiz 페이지 이동 실패:", error);
+              }
+            } else {
+              console.warn("퀴즈 데이터가 없습니다.");
+              alert("퀴즈 데이터를 받지 못했습니다.");
+            }
+          }
+          // MATCH_ACCEPTED 메시지 처리 (상대방이 수락했을 때)
+          else if (data.type === "MATCH_ACCEPTED") {
+            console.log("✅ 상대방이 매칭을 수락했습니다.");
+            // 상대방 수락 대기 중일 수 있으므로 상태 업데이트
+          }
+          // MATCH_REJECTED 메시지 처리 (상대방이 거절했을 때)
+          else if (data.type === "MATCH_REJECTED") {
+            console.log("❌ 상대방이 매칭을 거절했습니다.");
+            setShowMatchModal(false);
+            setRoomId(null);
+            setIsAccepting(false);
+            alert("상대방이 매칭을 거절했습니다.");
+          } else {
+            // 다른 메시지 처리
+            console.log("파싱된 데이터:", data);
+          }
         } catch (error) {
           console.error("메시지 파싱 오류:", error);
         }
@@ -31,19 +117,136 @@ function Main() {
   }, []);
 
   const handleStartMatching = () => {
+    // 웹소켓 연결 확인
+    const ws = getWS();
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("웹소켓이 연결되지 않았습니다.");
+      alert("웹소켓이 연결되지 않았습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
     // 매칭 시작 로직
     console.log("매칭 시작!");
 
-    // 웹소켓으로 매칭 요청 전송
+    // 웹소켓으로 매칭 참여 요청 전송 (MATCH_JOIN)
     send({
-      type: "START_MATCHING",
-      // 필요한 데이터 추가
+      type: "MATCH_JOIN",
     });
+
+    console.log("📤 [SEND] MATCH_JOIN");
+  };
+
+  const handleAcceptMatch = (accept: boolean) => {
+    if (!roomId) {
+      console.warn("roomId가 없습니다.");
+      alert("매칭 정보가 없습니다. 다시 시도해주세요.");
+      return;
+    }
+
+    const ws = getWS();
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("웹소켓이 연결되지 않았습니다.");
+      alert("웹소켓이 연결되지 않았습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    if (accept) {
+      // 수락 처리 중 상태로 변경
+      setIsAccepting(true);
+      console.log("매칭 수락 처리 중...");
+    }
+
+    // MATCH_ACCEPT 메시지 전송
+    send({
+      type: "MATCH_ACCEPT",
+      roomId: roomId,
+      accept: accept,
+    });
+
+    console.log(`📤 [SEND] MATCH_ACCEPT (accept=${accept}, roomId=${roomId})`);
+
+    if (accept) {
+      // 수락 시 팝업은 유지하고 로딩 상태 표시 (GAME_START가 올 때까지)
+      console.log("매칭을 수락했습니다. 게임 시작을 기다리는 중...");
+    } else {
+      // 거절 시 즉시 팝업 닫기 및 상태 초기화
+      setShowMatchModal(false);
+      setRoomId(null);
+      setIsAccepting(false);
+      console.log("매칭을 거절했습니다.");
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
-      <Header nickname="닉네임" role="역할" />
+      <Header />
+
+      {/* 매칭 팝업 모달 */}
+      {showMatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-md mx-4 bg-white rounded-3xl shadow-2xl overflow-hidden">
+            {/* 배경 장식 */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#05b04a]/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+
+            <div className="relative z-10 p-8">
+              {/* 아이콘 */}
+              <div className="flex justify-center mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-primary to-[#05b04a] rounded-2xl flex items-center justify-center shadow-lg">
+                  <svg
+                    className="w-10 h-10 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* 제목 */}
+              <h2 className="text-3xl font-bold text-center text-gray-900 mb-3">
+                매칭 성공! 🎉
+              </h2>
+              <p className="text-center text-gray-600 mb-8">
+                {isAccepting
+                  ? "게임 시작을 기다리는 중..."
+                  : "상대방과 매칭되었습니다.\n게임을 시작하시겠습니까?"}
+              </p>
+
+              {/* 수락 처리 중일 때 로딩 표시 */}
+              {isAccepting && (
+                <div className="flex justify-center mb-6">
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+
+              {/* 버튼 그룹 */}
+              {!isAccepting && (
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => handleAcceptMatch(false)}
+                    className="flex-1 px-6 py-4 text-lg font-bold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 transform hover:scale-105 active:scale-95"
+                  >
+                    거절
+                  </button>
+                  <button
+                    onClick={() => handleAcceptMatch(true)}
+                    className="flex-1 px-6 py-4 text-lg font-bold text-white bg-gradient-to-r from-primary to-[#05b04a] rounded-xl hover:from-[#05b04a] hover:to-primary transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+                  >
+                    수락
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 메인 컨텐츠 */}
       <main className="max-w-7xl mx-auto px-6 py-8">

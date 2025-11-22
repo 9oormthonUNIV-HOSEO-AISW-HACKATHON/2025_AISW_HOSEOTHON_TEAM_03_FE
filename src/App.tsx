@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Main from "./pages/Main";
+import Quiz from "./pages/Quiz";
 import { getWS } from "./utils/websocket";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/main" element={<Main />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/quiz" element={<Quiz />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
