@@ -3,15 +3,18 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import type { Profile, Ranking } from "../types/profile";
 
 export const useProfile = () => {
-  return useSuspenseQuery<Profile>({
+  const response = useSuspenseQuery<Profile>({
     queryKey: ["user"],
     queryFn: () => instance.get("/v1/members/profile"),
   });
+  return response.data.data;
 };
 
 export const useRanking = () => {
-  return useSuspenseQuery<Ranking>({
+  const response = useSuspenseQuery<Ranking>({
     queryKey: ["ranking"],
     queryFn: () => instance.get("/v1/rankings?page=1"),
   });
+
+  return response.data;
 };
