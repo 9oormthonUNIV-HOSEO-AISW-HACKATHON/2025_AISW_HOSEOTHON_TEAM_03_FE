@@ -1,10 +1,44 @@
+import { useEffect } from "react";
 import { RANKING_DATA } from "../constants/ranking";
 import Header from "../components/Header";
+import { getWS, send } from "../utils/websocket";
 
 function Main() {
+  useEffect(() => {
+    // 웹소켓 연결 (이미 연결되어 있으면 재사용)
+    getWS();
+
+    // 메시지 수신을 위해 getWS()로 소켓을 가져와서 직접 이벤트 리스너 등록
+    const ws = getWS();
+    if (ws) {
+      const handleMessage = (event: MessageEvent) => {
+        console.log("Main 페이지에서 메시지 수신:", event.data);
+        try {
+          const data = JSON.parse(event.data);
+          // 메시지 처리 로직
+          console.log("파싱된 데이터:", data);
+        } catch (error) {
+          console.error("메시지 파싱 오류:", error);
+        }
+      };
+
+      ws.addEventListener("message", handleMessage);
+
+      return () => {
+        ws.removeEventListener("message", handleMessage);
+      };
+    }
+  }, []);
+
   const handleStartMatching = () => {
     // 매칭 시작 로직
     console.log("매칭 시작!");
+
+    // 웹소켓으로 매칭 요청 전송
+    send({
+      type: "START_MATCHING",
+      // 필요한 데이터 추가
+    });
   };
 
   return (

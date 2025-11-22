@@ -1,9 +1,20 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Main from "./pages/Main";
+import { getWS } from "./utils/websocket";
 
 function App() {
+  useEffect(() => {
+    // accessToken이 있으면 웹소켓 연결 시도
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) {
+      console.log("App 시작: 웹소켓 연결 시도");
+      getWS();
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

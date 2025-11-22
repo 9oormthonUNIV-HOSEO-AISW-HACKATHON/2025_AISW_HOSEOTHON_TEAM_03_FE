@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { instance } from "../apis/instance";
+import { getWS } from "../utils/websocket";
 
 function Login() {
   const [loginId, setLoginId] = useState("");
@@ -19,6 +20,10 @@ function Login() {
       // accessToken을 localStorage에 저장
       if (response.data.accessToken) {
         localStorage.setItem("accessToken", response.data.accessToken);
+
+        // 웹소켓 연결
+        console.log("로그인 성공: 웹소켓 연결 시도");
+        getWS();
       }
 
       // 로그인 성공 후 메인 페이지로 이동
