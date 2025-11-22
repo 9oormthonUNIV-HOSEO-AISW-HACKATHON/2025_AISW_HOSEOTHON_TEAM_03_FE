@@ -11,6 +11,7 @@ export interface QuizOption {
 }
 
 export interface QuizQuestion {
+  id: number;
   category: string;
   content: string;
   options: QuizOption[];
@@ -79,8 +80,8 @@ function Main() {
       })
     );
   }, [ranking]);
-  // 매칭 성공 시 받은 roomId 저장
-  const [roomId, setRoomId] = useState<string | null>(null);
+  // 매칭 성공 시 받은 quizId 저장
+  const [quizId, setQuizId] = useState<string | null>(null);
   // 매칭 팝업 표시 여부
   const [showMatchModal, setShowMatchModal] = useState(false);
   // 수락 처리 중 상태
@@ -101,12 +102,12 @@ function Main() {
           // MATCH_FOUND 메시지 처리
           if (data.type === "MATCH_FOUND") {
             console.log("✅ 매칭 성공! MATCH_FOUND 수신");
-            console.log("roomId:", data.roomId);
+            console.log("quizId:", data.quizId);
 
-            // roomId 저장
-            if (data.roomId) {
-              setRoomId(data.roomId);
-              console.log("저장된 roomId:", data.roomId);
+            // quizId 저장
+            if (data.quizId) {
+              setQuizId(data.quizId);
+              console.log("저장된 quizId:", data.quizId);
             }
 
             // 매칭 팝업 표시
@@ -115,7 +116,7 @@ function Main() {
           // GAME_START 메시지 처리 (수락 후 게임 시작)
           else if (data.type === "GAME_START") {
             console.log("🎮 게임 시작! GAME_START 수신");
-            console.log("roomId:", data.roomId);
+            console.log("quizId:", data.quizId);
             console.log("questions:", data.questions);
 
             // 팝업 닫기
@@ -129,13 +130,13 @@ function Main() {
               console.log("받은 퀴즈 문제들:", quizData);
               console.log("퀴즈 개수:", quizData.length);
 
-              // Quiz 페이지로 이동하면서 퀴즈 데이터와 roomId 전달
+              // Quiz 페이지로 이동하면서 퀴즈 데이터와 quizId 전달
               console.log("Quiz 페이지로 이동 시도...");
               try {
                 navigate("/quiz", {
                   state: {
                     questions: quizData,
-                    roomId: data.roomId,
+                    quizId: data.quizId,
                   },
                   replace: false,
                 });
@@ -157,7 +158,7 @@ function Main() {
           else if (data.type === "MATCH_REJECTED") {
             console.log("❌ 상대방이 매칭을 거절했습니다.");
             setShowMatchModal(false);
-            setRoomId(null);
+            setQuizId(null);
             setIsAccepting(false);
             alert("상대방이 매칭을 거절했습니다.");
           } else {
@@ -198,8 +199,8 @@ function Main() {
   };
 
   const handleAcceptMatch = (accept: boolean) => {
-    if (!roomId) {
-      console.warn("roomId가 없습니다.");
+    if (!quizId) {
+      console.warn("quizId가 없습니다.");
       alert("매칭 정보가 없습니다. 다시 시도해주세요.");
       return;
     }
@@ -220,11 +221,11 @@ function Main() {
     // MATCH_ACCEPT 메시지 전송
     send({
       type: "MATCH_ACCEPT",
-      roomId: roomId,
+      quizId: quizId,
       accept: accept,
     });
 
-    console.log(`📤 [SEND] MATCH_ACCEPT (accept=${accept}, roomId=${roomId})`);
+    console.log(`📤 [SEND] MATCH_ACCEPT (accept=${accept}, quizId=${quizId})`);
 
     if (accept) {
       // 수락 시 팝업은 유지하고 로딩 상태 표시 (GAME_START가 올 때까지)
@@ -232,7 +233,7 @@ function Main() {
     } else {
       // 거절 시 즉시 팝업 닫기 및 상태 초기화
       setShowMatchModal(false);
-      setRoomId(null);
+      setQuizId(null);
       setIsAccepting(false);
       console.log("매칭을 거절했습니다.");
     }
