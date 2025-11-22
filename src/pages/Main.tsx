@@ -2,8 +2,12 @@ import { useEffect } from "react";
 import { RANKING_DATA } from "../constants/ranking";
 import Header from "../components/Header";
 import { getWS, send } from "../utils/websocket";
+import { useProfile } from "../hooks/user";
 
 function Main() {
+  const { data: profile } = useProfile();
+
+  console.log(profile);
   useEffect(() => {
     // 웹소켓 연결 (이미 연결되어 있으면 재사용)
     getWS();
