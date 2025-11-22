@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Main from "./pages/Main";
 import Quiz from "./pages/Quiz";
+import Result from "./pages/Result";
 import { getWS } from "./utils/websocket";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
         <Route path="/main" element={<Main />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/quiz" element={<Quiz />} />
+        <Route path="/result" element={<Result />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

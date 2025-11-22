@@ -210,8 +210,29 @@ function Quiz() {
     ) {
       setTimeout(() => {
         setGameFinished(true);
-        // TODO: 결과 페이지로 이동
         console.log("게임 종료! 최종 점수:", result.score);
+
+        // 결과 페이지로 이동하면서 quizId와 최종 점수 전달
+        if (state?.quizId) {
+          try {
+            navigate("/result", {
+              state: {
+                quizId: state.quizId,
+                finalScore: result.score,
+              },
+              replace: false,
+            });
+            console.log(
+              "✅ Result 페이지로 이동 완료 (quizId:",
+              state.quizId,
+              ")"
+            );
+          } catch (error) {
+            console.error("❌ Result 페이지 이동 실패:", error);
+          }
+        } else {
+          console.warn("quizId가 없어서 Result 페이지로 이동할 수 없습니다.");
+        }
       }, 2000);
     }
   };
@@ -234,6 +255,7 @@ function Quiz() {
       if (lastType !== "ANSWER_DONE") {
         console.warn("마지막 응답 type이 ANSWER_DONE이 아닙니다.");
       }
+      // 마지막 문제 후 결과 페이지로 이동은 handleAnswerResult에서 처리
     }
   };
 
