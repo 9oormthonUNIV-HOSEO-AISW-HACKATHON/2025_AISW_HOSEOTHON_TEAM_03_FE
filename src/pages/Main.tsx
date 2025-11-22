@@ -86,6 +86,8 @@ function Main() {
   const [showMatchModal, setShowMatchModal] = useState(false);
   // 수락 처리 중 상태
   const [isAccepting, setIsAccepting] = useState(false);
+  // 매칭 대기 중 상태
+  const [isMatching, setIsMatching] = useState(false);
 
   useEffect(() => {
     // 웹소켓 연결 (이미 연결되어 있으면 재사용)
@@ -110,6 +112,8 @@ function Main() {
               console.log("저장된 quizId:", data.quizId);
             }
 
+            // 매칭 대기 상태 해제
+            setIsMatching(false);
             // 매칭 팝업 표시
             setShowMatchModal(true);
           }
@@ -160,6 +164,7 @@ function Main() {
             setShowMatchModal(false);
             setQuizId(null);
             setIsAccepting(false);
+            setIsMatching(false);
             alert("상대방이 매칭을 거절했습니다.");
           } else {
             // 다른 메시지 처리
@@ -189,6 +194,9 @@ function Main() {
 
     // 매칭 시작 로직
     console.log("매칭 시작!");
+
+    // 매칭 대기 상태로 변경
+    setIsMatching(true);
 
     // 웹소켓으로 매칭 참여 요청 전송 (MATCH_JOIN)
     send({
@@ -503,25 +511,41 @@ function Main() {
                   </p>
                   <button
                     onClick={handleStartMatching}
-                    className="group relative px-16 py-6 text-2xl font-bold text-white rounded-2xl bg-gradient-to-r from-primary to-[#05b04a] hover:from-[#05b04a] hover:to-primary transform hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl hover:shadow-[0_25px_60px_rgba(5,199,85,0.5)] overflow-hidden"
+                    disabled={isMatching}
+                    className={`group relative px-16 py-6 text-2xl font-bold text-white rounded-2xl bg-gradient-to-r from-primary to-[#05b04a] transition-all duration-300 shadow-2xl overflow-hidden ${
+                      isMatching
+                        ? "opacity-75 cursor-not-allowed"
+                        : "hover:from-[#05b04a] hover:to-primary transform hover:scale-105 active:scale-95 hover:shadow-[0_25px_60px_rgba(5,199,85,0.5)]"
+                    }`}
                   >
                     <span className="relative z-10 flex items-center gap-4">
-                      <svg
-                        className="w-7 h-7 animate-pulse group-hover:animate-none"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13 10V3L4 14h7v7l9-11h-7z"
-                        />
-                      </svg>
-                      매칭 시작하기
+                      {isMatching ? (
+                        <>
+                          <div className="w-7 h-7 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                          매칭을 기다리는 중...
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="w-7 h-7 animate-pulse group-hover:animate-none"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 10V3L4 14h7v7l9-11h-7z"
+                            />
+                          </svg>
+                          매칭 시작하기
+                        </>
+                      )}
                     </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    {!isMatching && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    )}
                   </button>
                 </div>
               </div>
