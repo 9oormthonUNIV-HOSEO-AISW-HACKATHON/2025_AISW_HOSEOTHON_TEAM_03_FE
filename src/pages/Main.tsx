@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { RANKING_DATA } from "../constants/ranking";
 import Header from "../components/Header";
 import { getWS, send } from "../utils/websocket";
+import { useRanking } from "../hooks/user";
 
 // 퀴즈 문제 타입 정의 (export하여 다른 파일에서도 사용 가능)
 export interface QuizOption {
@@ -17,7 +17,68 @@ export interface QuizQuestion {
 }
 
 function Main() {
+  const ranking = useRanking();
   const navigate = useNavigate();
+
+  // 디버깅: API 응답 구조 확인
+  console.log("전체 ranking 객체:", ranking);
+  console.log("ranking.responses:", ranking?.responses);
+  console.log("ranking 타입:", typeof ranking);
+  console.log("responses 타입:", typeof ranking?.responses);
+  console.log("isArray?", Array.isArray(ranking?.responses));
+
+  // 실제 랭킹 데이터를 UI에 맞게 변환
+  const rankingData = useMemo(() => {
+    console.log("rankingData 계산 시작, ranking:", ranking);
+
+    // API 응답 구조가 다를 수 있으므로 여러 경우를 확인
+    let responses: Array<{
+      nickname: string;
+      totalPoints: number;
+      grade: string;
+      generationRole: string;
+    }> | null = null;
+
+    if (ranking?.responses) {
+      responses = ranking.responses;
+    } else if (
+      ranking &&
+      typeof ranking === "object" &&
+      "data" in ranking &&
+      ranking.data &&
+      typeof ranking.data === "object" &&
+      "responses" in ranking.data &&
+      Array.isArray(ranking.data.responses)
+    ) {
+      responses = ranking.data.responses;
+    } else if (Array.isArray(ranking)) {
+      responses = ranking;
+    }
+
+    console.log("추출된 responses:", responses);
+
+    if (!responses || !Array.isArray(responses)) {
+      console.warn("랭킹 데이터를 찾을 수 없습니다. ranking:", ranking);
+      return [];
+    }
+
+    return responses.map(
+      (
+        user: {
+          nickname: string;
+          totalPoints: number;
+          grade: string;
+          generationRole: string;
+        },
+        index: number
+      ) => ({
+        rank: index + 1,
+        nickname: user.nickname,
+        role: user.generationRole === "SENIOR" ? "시니어" : "MZ",
+        score: user.totalPoints,
+      })
+    );
+  }, [ranking]);
   // 매칭 성공 시 받은 roomId 저장
   const [roomId, setRoomId] = useState<string | null>(null);
   // 매칭 팝업 표시 여부
@@ -329,10 +390,10 @@ function Main() {
           </div>
 
           {/* 하단: 회원 랭킹과 매칭 버튼 */}
-          <div className="flex flex-col lg:flex-row gap-6 items-start">
+          <div className="flex flex-col lg:flex-row gap-6 items-stretch">
             {/* 왼쪽: 회원 랭킹 */}
-            <div className="w-full lg:w-[400px] bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-xl border border-gray-100 p-6">
-              <div className="flex items-center gap-3 mb-6">
+            <div className="w-full lg:w-[400px] bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col">
+              <div className="flex items-center gap-3 mb-6 flex-shrink-0">
                 <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-md">
                   <span className="text-2xl">🏆</span>
                 </div>
@@ -340,69 +401,75 @@ function Main() {
                   회원 랭킹
                 </h2>
               </div>
-              <div className="space-y-3">
-                {RANKING_DATA.map((user) => (
-                  <div
-                    key={user.rank}
-                    className={`group relative flex items-center justify-between p-4 rounded-xl transition-all duration-300 ${
-                      user.rank <= 3
-                        ? "bg-gradient-to-r from-white to-gray-50 shadow-md hover:shadow-lg"
-                        : "bg-white hover:bg-gray-50 shadow-sm hover:shadow-md"
-                    } border ${
-                      user.rank === 1
-                        ? "border-yellow-200"
-                        : user.rank === 2
-                        ? "border-gray-300"
-                        : user.rank === 3
-                        ? "border-amber-200"
-                        : "border-gray-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div
-                        className={`flex items-center justify-center w-12 h-12 rounded-xl font-bold text-lg shadow-sm ${
-                          user.rank === 1
-                            ? "bg-gradient-to-br from-yellow-400 to-yellow-500 text-white"
-                            : user.rank === 2
-                            ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
-                            : user.rank === 3
-                            ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {user.rank}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg font-bold text-gray-800">
-                            {user.nickname}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              user.role === "시니어"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-purple-100 text-purple-700"
-                            }`}
-                          >
-                            {user.role}
-                          </span>
+              <div className="space-y-3 overflow-y-auto flex-1 min-h-0">
+                {rankingData.length > 0 ? (
+                  rankingData.map((user) => (
+                    <div
+                      key={user.rank}
+                      className={`group relative flex items-center justify-between p-4 rounded-xl transition-all duration-300 ${
+                        user.rank <= 3
+                          ? "bg-gradient-to-r from-white to-gray-50 shadow-md hover:shadow-lg"
+                          : "bg-white hover:bg-gray-50 shadow-sm hover:shadow-md"
+                      } border ${
+                        user.rank === 1
+                          ? "border-yellow-200"
+                          : user.rank === 2
+                          ? "border-gray-300"
+                          : user.rank === 3
+                          ? "border-amber-200"
+                          : "border-gray-100"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <div
+                          className={`flex items-center justify-center w-12 h-12 rounded-xl font-bold text-lg shadow-sm ${
+                            user.rank === 1
+                              ? "bg-gradient-to-br from-yellow-400 to-yellow-500 text-white"
+                              : user.rank === 2
+                              ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
+                              : user.rank === 3
+                              ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {user.rank}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg font-bold text-gray-800">
+                              {user.nickname}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                user.role === "시니어"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-purple-100 text-purple-700"
+                              }`}
+                            >
+                              {user.role}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold bg-gradient-to-r from-primary to-[#05b04a] bg-clip-text text-transparent">
+                          {user.score}
+                        </span>
+                        <span className="text-sm text-gray-500">점</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold bg-gradient-to-r from-primary to-[#05b04a] bg-clip-text text-transparent">
-                        {user.score}
-                      </span>
-                      <span className="text-sm text-gray-500">점</span>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    랭킹 데이터가 없습니다.
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             {/* 오른쪽: 매칭 시작 버튼 영역 */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="relative w-full max-w-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-[#05b04a]/10 rounded-3xl p-12 border-2 border-primary/20 shadow-2xl overflow-hidden">
+            <div className="flex-1 flex flex-col items-end justify-center min-h-0">
+              <div className="relative w-full max-w-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-[#05b04a]/10 rounded-3xl p-12 border-2 border-primary/20 shadow-2xl overflow-hidden h-full flex items-center justify-center">
                 {/* 배경 장식 요소 */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#05b04a]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
